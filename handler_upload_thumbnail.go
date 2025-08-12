@@ -1,10 +1,12 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/database"
@@ -46,12 +48,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 	defer file.Close()
 
-	mediaType := header.Header.Get("Content-Type")
-	fileData, err := io.ReadAll(file)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "couln't read file data", err)
-		return
-	}
+	mediaType := strings.TrimLeft(header.Header.Get("Content-Type"), "image/")
 
 	video, err := cfg.db.GetVideo(videoID)
 	if err != nil {
@@ -63,7 +60,22 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	newUrl := fmt.Sprintf("data:%s;base64,%s", mediaType, base64.StdEncoding.EncodeToString(fileData))
+	filename := fmt.Sprintf("%s.%s", videoIDString, mediaType)
+
+	newFile, err := os.Create(filepath.Join(cfg.assetsRoot, filename))
+	defer newFile.Close()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "can't create new thumbnail file", err)
+		return
+	}
+
+	_, err = io.Copy(newFile, file)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "can't copy contents from multiform file", err)
+		return
+	}
+
+	newUrl := fmt.Sprintf("http://localhost:%s/assets/%s", cfg.port, filename)
 	video.ThumbnailURL = &newUrl
 	err = cfg.db.UpdateVideo(video)
 	if err != nil {
