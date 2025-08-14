@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	// "strings"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/database"
@@ -41,14 +42,24 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	r.ParseMultipartForm(maxMemory)
 
-	file, header, err := r.FormFile("thumbnail")
+	mediaType, _, err := mime.ParseMediaType("thumbnail")
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "couldn't parse media type", err)
+		return
+	}
+	if mediaType != "image/jpeg" && mediaType != "image/png" {
+		respondWithError(w, http.StatusBadRequest, "wrong content type", err)
+		return
+	}
+
+	file, _, err := r.FormFile("thumbnail")
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "couldn't parse from file", err)
 		return
 	}
 	defer file.Close()
 
-	mediaType := strings.TrimLeft(header.Header.Get("Content-Type"), "image/")
+	// mediaType := strings.TrimLeft(header.Header.Get("Content-Type"), "image/")
 
 	video, err := cfg.db.GetVideo(videoID)
 	if err != nil {
