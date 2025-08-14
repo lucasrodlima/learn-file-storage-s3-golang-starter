@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	// "strings"
+	"strings"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/database"
@@ -42,24 +42,23 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	r.ParseMultipartForm(maxMemory)
 
-	mediaType, _, err := mime.ParseMediaType("thumbnail")
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "couldn't parse media type", err)
-		return
-	}
-	if mediaType != "image/jpeg" && mediaType != "image/png" {
-		respondWithError(w, http.StatusBadRequest, "wrong content type", err)
-		return
-	}
-
-	file, _, err := r.FormFile("thumbnail")
+	file, header, err := r.FormFile("thumbnail")
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "couldn't parse from file", err)
 		return
 	}
 	defer file.Close()
 
-	// mediaType := strings.TrimLeft(header.Header.Get("Content-Type"), "image/")
+	mediaType, _, err := mime.ParseMediaType(header.Header.Get("Content-Type"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "couldn't parse media type", err)
+		return
+	}
+	if mediaType != "image/jpeg" && mediaType != "image/png" {
+		fmt.Println(mediaType)
+		respondWithError(w, http.StatusBadRequest, "wrong content type", err)
+		return
+	}
 
 	video, err := cfg.db.GetVideo(videoID)
 	if err != nil {
@@ -71,7 +70,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	filename := fmt.Sprintf("%s.%s", videoIDString, mediaType)
+	filename := fmt.Sprintf("%s.%s", videoIDString, strings.TrimLeft(mediaType, "image/"))
 
 	newFile, err := os.Create(filepath.Join(cfg.assetsRoot, filename))
 	defer newFile.Close()
