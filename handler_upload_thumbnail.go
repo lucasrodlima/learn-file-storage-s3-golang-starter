@@ -79,11 +79,11 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		strings.TrimLeft(mediaType, "image/"))
 
 	newFile, err := os.Create(filepath.Join(cfg.assetsRoot, filename))
-	defer newFile.Close()
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "can't create new thumbnail file", err)
 		return
 	}
+	defer newFile.Close()
 
 	_, err = io.Copy(newFile, file)
 	if err != nil {
