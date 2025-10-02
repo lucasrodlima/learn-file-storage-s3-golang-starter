@@ -90,9 +90,9 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	random := make([]byte, 32)
 	rand.Read(random)
-	objectKey := base64.RawURLEncoding.EncodeToString(random)
+	objectKey := fmt.Sprintf("%s.mp4", base64.RawURLEncoding.EncodeToString(random))
 
-	s3Object, err := cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
+	_, err = cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
 		Key:         &objectKey,
 		Body:        tempFile,
@@ -103,7 +103,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	videoUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", cfg.s3Bucket, cfg.s3Region, s3Object.Key)
+	videoUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", cfg.s3Bucket, cfg.s3Region, objectKey)
 	video.VideoURL = &videoUrl
 
 	err = cfg.db.UpdateVideo(video)
